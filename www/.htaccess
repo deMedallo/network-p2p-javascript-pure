@@ -1,0 +1,5 @@
+RewriteEngine On
+
+#   Entrada:  {PAGINA}/
+#   Salida: index.php?page={PAGINA}
+RewriteRule ^(\w+)/?$ index.php?page=$1 [L,QSA]
