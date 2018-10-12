@@ -133,6 +133,51 @@ class Blockchain {
      * @param string $file_name The path to the file containing your blockchain.
      * @return string|boolean
      */
+    public function getListBlockchainLimit($file_name, $limit=6) {
+        if (!file_exists($file_name))
+            return false;
+        $size = filesize($file_name);
+        $fp = fopen($file_name, 'rb');
+        $height = 0;
+        $blockchain = [];
+        while (ftell($fp) < $size) {
+            $header = fread($fp, $this->_blksize);
+
+            $magic = $this->unpack32($header, 0);
+            $version = ord($header[4]);
+            $timestamp = $this->unpack32($header, 5);
+            $prevhash = bin2hex(substr($header, 9, $this->_hashlen));
+            $datalen = $this->unpack32($header, -4);
+            $data = fread($fp, $datalen);
+            $hash = hash($this->_hashalg, $header . $data);
+
+            array_push($blockchain, [
+                "position" => ++$height,
+                "header" => ord($header),
+                "magic" => dechex($magic),
+                "version" => $version,
+                "timestamp" => $timestamp,
+                "prevhash" => $prevhash,
+                "hash" => $hash,
+                "datalen" => $datalen,
+                "data" => json_decode(wordwrap($data, 100))
+            ]);
+        }
+        fclose($fp);
+        
+        $arrayReturn = array();
+        $i = 0;
+        foreach(array_reverse($blockchain) as $item){
+            if($i >= $limit){
+                break;
+            }
+            $arrayReturn[] = $item;
+            $i++;
+        }
+        
+        return ($arrayReturn);
+    }
+    
     public function getBlockchain($file_name) {
         if (!file_exists($file_name))
             return false;

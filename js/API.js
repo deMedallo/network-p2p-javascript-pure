@@ -1,5 +1,5 @@
 const instance = axios.create({
-  baseURL: '/bc/05/www',
+  baseURL: '/blockchain-php/www',
   timeout: 20000,
   headers: {'X-Custom-Header': 'foobar'}
 });
@@ -92,6 +92,7 @@ API.NextPeerConn = function(prevHash){
             console.log(error);
         });
     }
+    
 };
 
 function getUrlParam(name) {
@@ -112,11 +113,11 @@ API.ConnNodes = function(){
     console.log(API.peers.length);
     
     peers = [];
+    connets = [];
     for (i = 0; i < API.peers.length; i++) {
-        peerId = API.peers[i].peerId;
-        console.log(peerId);
-        console.log(API.Peer);
-        console.log(i);
+        peerId = API.peers[i];
+        console.log("Peer: ID: " + peerId);
+        console.log("En lista: " + i);
         
         peer = new Peer(null, {
             debug: 2
@@ -135,10 +136,7 @@ API.ConnNodes = function(){
             //oppositePeer.peerId = peerId;
             status.innerHTML = "Connected to: " + peerId;
             console.log("Connected to: " + peerId)
-            ready();
-        });
-        
-                function ready() {
+            
                     // Recieve data (only messages)
                     conn.on('data', function (data) {
                         addMessage("<span class=\"peerMsg\">Peer:</span> " + data);
@@ -209,13 +207,10 @@ API.ConnNodes = function(){
                     conn.send("Go");
                     console.log("Go signal sent");
                     addMessage(cueString + "Go");
-                };
+                
+        });
         
-                    conn.send("Go");
-                    console.log("Go signal sent");
-                    addMessage(cueString + "Go");
-        
-        
+        connets.push(conn);
         /*
         var conn = peer.connect(destId, {
             reliable: true
@@ -227,7 +222,7 @@ API.ConnNodes = function(){
             ready();
         });*/
     }
-    // API.Peer[i]
+    API.Peer = connets;
 }
 
 API.TreePeers = function(){
@@ -235,60 +230,45 @@ API.TreePeers = function(){
     var arrayPeers = [];
     instance.get('/peer', {
         params: {
-            
+            listConnect: 3
         }
     })
     .then(function (re) {
         r = re.data;
-        //console.log(response.data);
         console.log('Cargando Nodos...');
         if(r.error == false){
             console.log('Nodo mas reciente cargado...');
-            //console.log(r.data);
-            API.peers.push(r.data.data);
-            API.NextPeerConn(r.data.prevhash);
+            console.log(r.data);
+            API.Nodes = (r.data);
+            for(i = 0; i < API.Nodes.length; i++) {
+                console.log('Nuevo nodo agregado');
+                API.peers.push(API.Nodes[i].data.peerId);
+            };
             API.ConnNodes();
+        }else{
+            console.log('error: no se cargaron mas nodos.');
+            console.log('Respuesta:');
+            console.log(re.data);
         }
     })
     .catch(function (error) {
         console.log(error);
     });
-}
-
-
-
-function addMessage(msg) {
-    var now = new Date();
-    var h = now.getHours();
-    var m = addZero(now.getMinutes());
-    var s = addZero(now.getSeconds());
-
-    if (h > 12)
-        h -= 12;
-    else if (h === 0)
-        h = 12;
-
-    function addZero(t) {
-        if (t < 10)
-            t = "0" + t;
-        return t;
-    };
-
-    message.innerHTML = "<br><span class=\"msg-time\">" + h + ":" + m + ":" + s + "</span>  -  " + msg + message.innerHTML;
 };
+
+API.SendAll = function(msg){
+    console.log("Enviando mensaje a todos los nodos: " + msg);
+    
+    
+    for(i = 0; i < API.Peer.length; i++) {
+        API.Peer[i].send(msg);
+    }
+    
+    //addMessage("Enviando mensaje a todos los nodos: " + msg);
+    //addMessage(msg);
+}
 
 function clearMessages() {
     message.innerHTML = "";
     addMessage("Msgs cleared");
 };
-
-
-
-var conn = null;
-
-if (conn) {
-    ready();
-}
-else {
-    API.TreePeers();
-}
