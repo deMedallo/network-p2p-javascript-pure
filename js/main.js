@@ -278,7 +278,7 @@ var Principal = new Vue({
                                 }
                                 else if(data.from == self.MePeerId && data.response == true){
                                     if(self.hashHisory.indexOf(data.hash) <= -1){
-                                        self.addLog(data.to, 'Ping', 'success');
+                                        self.addMessage(data.to, 'Ping', 'success');
                                         self.hashHisory.push(data.hash);
                                     }
                                 }
