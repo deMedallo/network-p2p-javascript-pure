@@ -72,7 +72,7 @@ const homePage = Vue.component('homePage', {
             </div>
             <div class="col-sm-12">
                 <textarea class="form-control" v-model="$parent.message"></textarea>
-                <button @click="SendMessage" class=\"btn btn-info\">Enviar</button>
+                <!-- <button @click="SendMessage" class=\"btn btn-info\">Enviar</button> -->
             </div>
         </div>
 	`
@@ -175,7 +175,6 @@ var Principal = new Vue({
             msg.to = self.MePeerId;
             msg.response = true;
             
-            console.log(msg);
             API.SendAll(msg);
         },
         createMyNode(){
@@ -218,8 +217,6 @@ var Principal = new Vue({
                     self.addLog(self.MePeer.id, 'Nodo Conectado: ', 'secondary');
                     
                     self.MeConn.on('data', function (data) {
-                        console.log("Data recieved");
-                        console.log(data);
                         self.ValidateDataRecibe(data);
                     });
                 
@@ -244,13 +241,9 @@ var Principal = new Vue({
             });
         },
         ValidateDataRecibe(data){
-            //self.sendAll(data);
-            console.log(data);
             var self = this;
            
-            console.log('validando contenido recibido');
             if(!data.peerId || !data.hash){
-                //self.addMessage(data.text, 'Mensaje Recibido', 'danger');
                 self.addMessage(JSON.stringify(data), 'Mensaje Recibido sin datos completos.', 'danger');                
             }else{
                 //if(self.hashHisory.indexOf(data.hash) <= -1){
@@ -258,20 +251,19 @@ var Principal = new Vue({
                         case 'message':
                             if(self.bcMessage.indexOf(data.hash) <= -1){
                                 if(data.to == self.MePeerId){
-                                    self.addMessage(data.peerId, 'Mensaje Recibido por: ', 'success');
+                                    self.addMessage(data.text, data.peerId, 'success');
                                     self.addLog(data.from, 'Enviando confirmacion de mensaje a: ', 'info');
                                     self.messageResponse(data);
                                 }
                                 else if(data.from == self.MePeerId && data.response == true){
                                     if(self.hashHisory.indexOf(data.hash) <= -1){
-                                        self.addMessage(data.hash, 'Mensaje Recibido', 'success');
+                                        self.addLog(data.to, 'Mensaje Recibido', 'success');
+                                        self.hashHisory.push(data.hash);
                                     }
-                                    self.hashHisory.push(data.hash);
                                 }
                                 else{
                                     self.addLog(data.hash, 'Retransamitir Mensaje ', 'secondary');
                                     self.bcMessage[data.hash] = data;
-                                    //self.sendAll(data);
                                 }
                             }else{
                                 self.addMessage(JSON.stringify(data), 'Recibidio Y Validar encontrado', 'warning');
@@ -286,14 +278,13 @@ var Principal = new Vue({
                                 }
                                 else if(data.from == self.MePeerId && data.response == true){
                                     if(self.hashHisory.indexOf(data.hash) <= -1){
-                                        self.addMessage(data.hash, 'Confirmacion Recibida', 'success');
+                                        self.addLog(data.to, 'Ping', 'success');
+                                        self.hashHisory.push(data.hash);
                                     }
-                                    self.hashHisory.push(data.hash);
                                 }
                                 else{
                                     self.addLog(data.hash, 'Retransamitir ', 'secondary');
                                     self.bcPing[data.hash] = data;
-                                    //self.sendAll(data);
                                 }
                             }else{
                                 self.addMessage(JSON.stringify(data), 'Recibidio Y Validar encontrado', 'warning');
@@ -370,7 +361,7 @@ var Principal = new Vue({
                         
                         conn.on('data', function (data) {
                             console.log("Data recieved");
-                            console.log(JSON.stringify(data));
+                            
                             self.ValidateDataRecibe(data);
                         });
 
@@ -547,8 +538,8 @@ var Principal = new Vue({
                                             <div class="led-gray" v-if="node.connect == false"></div>
                                         </td>
                                         <td>{{ node.peerId }}</td>
-                                        <td><a href="#" @click="pingPeer(node.peerId)">Ping</a></td>
-                                        <td><a href="#" @click="messagePeer(node.peerId)">Enviar texto</a></td>
+                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)">Ping</a></td>
+                                        <td><a href="#" class="btn btn-sm btn-success" @click="messagePeer(node.peerId)">Enviar texto</a></td>
                                         <!-- {{ node.data.timestamp }} -->
                                     </tr>
                                 </table>
