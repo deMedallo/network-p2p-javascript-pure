@@ -334,6 +334,7 @@ var Principal = new Vue({
                                     <tr v-for="node in nodesEnables" :key="node.peerId" v-if="node.peerId != MePeerId">
                                         <td>{{ node.peerId }}</td>
                                         <td><a href="#" class="btn btn-sm btn-secondary" @click="createNode(node.peerId)">Conectar</a></td>
+                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)">Ping</a></td>
                                         <!-- {{ node.data.timestamp }} -->
                                     </tr>
                                 </table>

@@ -383,6 +383,8 @@ API.ValidateDataRecibe = function(data){
                             text: 'Enviando confirmacion de ping a: ' + data.from
                         });
                         data.type = 'pingResponse';
+                        data.from = API.peerId;
+                        data.to = data.from;
                         API.SendAll(data);
                         API.bcPing.push(data.hash);
                         //console.addLog(JSON.stringify(data));
