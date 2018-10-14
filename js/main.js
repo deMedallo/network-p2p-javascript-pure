@@ -1,4 +1,3 @@
-
 const createWalletPage = Vue.component('createWalletPage', {
     methods: {
         SendMessage(){
@@ -61,12 +60,15 @@ const homePage = Vue.component('homePage', {
             self.$parent.sendMessage();
         }
     },
+    mounted(){
+		var self = this;
+    },
 	template: `
         <div>
             <div class="col-sm-12 pre-scrollable" style="max-height: calc(50vh);min-height: calc(50vh);">
-                <div v-for="msg in $parent.messages">
-                    <div v-bind:class="'alert alert-' + msg.type " >
-                      <strong>{{ msg.title }}</strong> {{ msg.text }}
+                <div v-for="msg in $parent.messagesAPI">
+                    <div v-bind:class="'alert alert-' + msg.type" >
+                      <strong>{{ msg.from }} => {{ msg.to }}</strong> {{ msg.text }}
                     </div>
                 </div>
             </div>
@@ -87,17 +89,26 @@ const router = new VueRouter({
   routes
 })
 
+
 var Principal = new Vue({
 	el: '#app',
 	router: router,
 	components: {
+        'API': API,
         'homePage': homePage
 	},
 	data: {
 		connect: false,
+		nodoCreate: false,
+		statusAPI: '',
+		messagesAPI: [],
+		logsAPI: [],
+		MePeerId: '',
 		hashHisory: [],
 		bcPing: [],
 		bcMessage: [],
+		nodesStatus: {},
+		nodesEnables: {},
 		totalConnect: 0,
         peersTotal: 0,
 		messages: [],
@@ -105,34 +116,51 @@ var Principal = new Vue({
 		lastLog: '',
 		logs: [],
 		peers: [],
-		search_text: '',
-		nodes: API.Nodes,
-		MePeerId: '',
+		search_node: '',
 		MeConn: null,
 		messageStatus: '',
 		MePeer: null,
+		lastPing: null,
 	},
 	created() {
 		var self = this;
-        self.createMyNode();
-        self.Conectar();
 	},
 	mounted() {
-	},
-	watch: {
-		//token(newName) { localStorage.token = newName; }
+		var self = this;
+        self.createMyNode();
+        
+        self.startInterval();
 	},
 	methods: {
-        pingPeer(peerId){
+        startInterval() {
+            const self = this;
+            setInterval(function() {
+                self.nodesStatus = API.getNodesStatus();
+                self.nodesEnables = API.nodesEnables();
+                self.messagesAPI = API.getMessages();
+                self.logsAPI = API.getLogs();
+                self.statusAPI = API.getStatus();
+            }, 1000);
+            setInterval(function() {
+                self.MePeerId = API.peerId;
+                self.connect = API.connectStatus;
+                
+                self.lastPing = new Date();
+            }, 5000);
+        },
+        nodeSearch(){
             var self = this;
-            
-            var ping = {};
-            ping.type = 'ping';
-            ping.from = self.MePeerId;
-            ping.to = peerId;
-            
-            
-            self.sendAll(ping);
+            if(self.search_node != '' && self.search_node.length > 4)
+            {
+                if(self.MePeerId != self.search_node){
+                    self.createNode(self.search_node);
+                }else{
+                    alert('No te puedes conectar a tu nodo');
+                }
+            }
+        },
+        pingPeer(peerId){
+            API.sendPing(peerId);
         },
         messagePeer(peerId){
             var self = this;
@@ -177,124 +205,10 @@ var Principal = new Vue({
             
             API.SendAll(msg);
         },
-        createMyNode(){
-            var self = this;
-            self.addLog('Creando nodo', 'deMedallo: ', 'secondary');
-            self.MePeer = new Peer(null, {
-                debug: 2
-            });
-            self.MePeer.on('open', function (id) {
-                self.MePeerId = id;
-                self.addLog(self.MePeerId, 'Nodo Creado: ', 'default');
-                API.addPeer(self.MePeerId);
-            });
-            self.MePeer.on('error', function (err) {
-                if (err.type === 'unavailable-id') {
-                    self.addLog(err, "Error: ", "danger");
-                    self.MePeer.reconnect();
-                }
-                else{
-                    self.addLog(err, "Error: ", "danger");
-                }
-            });
-            
-            self.MePeer.on('open', function () {
-                self.messageStatus = "En espera de conexión...";
-                self.addLog('En espera de conexión...', 'Nodo Open: ', 'secondary');
-            });
-            self.MePeer.on('connection', function (c) {
-                if (self.MeConn) {
-                    self.messageStatus = "Ya conectado...";
-                    self.addLog('Ya conectado...', 'Nodo Conectado: ', 'secondary');
-                    c.send("Ya conectado...");
-                    c.close();
-                    self.addLog('close...', 'Nodo Conectado: ', 'secondary');
-                    return;
-                }else{                    
-                    self.MeConn = c;
-                    self.connect = true;
-                    self.messageStatus = "Conectado";
-                    self.addLog(self.MePeer.id, 'Nodo Conectado: ', 'secondary');
-                    
-                    self.MeConn.on('data', function (data) {
-                        self.ValidateDataRecibe(data);
-                    });
-                
-                    self.MeConn.on('close', function () {
-                        self.connect = false;
-                        self.messageStatus = "Connection reset, Awaiting connection...";
-                        self.MeConn = null;
-                        self.createMyNode();
-                    });
-                    self.MePeer.on('disconnected', function () {
-                        self.connect = false;
-                        self.messageStatus = "Connection has been lost.";
-                        self.MePeer.reconnect();
-                    });
-                    self.MePeer.on('error', function (err) {
-                        console.log('' + err)
-                    });
-                    
-                    API.Peer.push(self.MeConn);
-                }
-                
-            });
-        },
-        ValidateDataRecibe(data){
-            var self = this;
-           
-            if(!data.peerId || !data.hash){
-                self.addMessage(JSON.stringify(data), 'Mensaje Recibido sin datos completos.', 'danger');                
-            }else{
-                //if(self.hashHisory.indexOf(data.hash) <= -1){
-                    switch (data.type) {
-                        case 'message':
-                            if(self.bcMessage.indexOf(data.hash) <= -1){
-                                if(data.to == self.MePeerId){
-                                    self.addMessage(data.text, data.peerId, 'success');
-                                    self.addLog(data.from, 'Enviando confirmacion de mensaje a: ', 'info');
-                                    self.messageResponse(data);
-                                }
-                                else if(data.from == self.MePeerId && data.response == true){
-                                    if(self.hashHisory.indexOf(data.hash) <= -1){
-                                        self.addLog(data.to, 'Mensaje Recibido', 'success');
-                                        self.hashHisory.push(data.hash);
-                                    }
-                                }
-                                else{
-                                    self.addLog(data.hash, 'Retransamitir Mensaje ', 'secondary');
-                                    self.bcMessage[data.hash] = data;
-                                }
-                            }else{
-                                self.addMessage(JSON.stringify(data), 'Recibidio Y Validar encontrado', 'warning');
-                            }
-                            break;
-                        case 'ping':                           
-                            if(self.bcPing.indexOf(data.hash) <= -1){
-                                if(data.to == self.MePeerId){
-                                    self.addLog(data.peerId, 'Recibido por: ', 'success');
-                                    self.addLog(data.from, 'Enviando confirmacion a: ', 'info');
-                                    self.pingPeerResponse(data);
-                                }
-                                else if(data.from == self.MePeerId && data.response == true){
-                                    if(self.hashHisory.indexOf(data.hash) <= -1){
-                                        self.addMessage(data.to, 'Ping', 'success');
-                                        self.hashHisory.push(data.hash);
-                                    }
-                                }
-                                else{
-                                    self.addLog(data.hash, 'Retransamitir ', 'secondary');
-                                    self.bcPing[data.hash] = data;
-                                }
-                            }else{
-                                self.addMessage(JSON.stringify(data), 'Recibidio Y Validar encontrado', 'warning');
-                            }
-                            break;
-                        default:            
-                            break;
-                    };
-                //}
-            }
+        createMyNode(){   
+            var self = this;  
+            self.nodoCreate = true;
+            API.createMyNode();
             
         },
         sendMessage(){
@@ -328,129 +242,8 @@ var Principal = new Vue({
             }
             
         },
-        validateLoadPeer(r){
-            var self = this;
-            if(r.error == false){
-                if(API.peers.indexOf(r.data.data.peerId) <= -1 && r.data.data.peerId != self.MePeerId){
-                    ++self.peersTotal;
-                    var peerId = r.data.data.peerId;
-                    API.peers.push(peerId);
-                    
-                    var NewPeer = new Peer();
-                    var conn = NewPeer.connect(peerId, {
-                        reliable: true
-                    });
-                    
-                    if(Object.keys(API.Nodes).length <= 6 ){
-                        var newLoadPeerByHash = setTimeout(function(){
-                            self.addLog(r.data.prevhash, 'Cargando Siguiente Peer', "success");
-                            self.loadPeerByHash(r.data.prevhash);
-                        }, 3000); 
-                    }
-                    
-                    conn.on('open', function () {        
-                        var itemNew = {};
-                        itemNew.peerId = peerId;
-                        itemNew.connect = false;
-                        itemNew.data = r.data;
-                        API.Nodes[peerId] = itemNew;
-                        
-                        self.addLog(peerId, 'Conectado con: ', "success");
-                        ++self.totalConnect;
-                        API.Nodes[peerId].connect = true;
-                        
-                        conn.on('data', function (data) {
-                            console.log("Data recieved");
-                            
-                            self.ValidateDataRecibe(data);
-                        });
-
-                        conn.on('close', function () {
-                            --self.totalConnect;
-                            self.addLog("Desconectado de: "+peerId, "Coneccion Perdida", "warning");
-                            API.Nodes[peerId].connect = false;
-                            delete API.Nodes[peerId];
-                            delete API.peers[peerId];
-                        });
-                        
-                        NewPeer.on('disconnected', function () {
-                            --self.totalConnect;
-                            self.addLog("Desconectado:", "Connection has been lost.", "danger");
-                            peer.reconnect();
-                            API.Nodes[peerId].connect = false;
-                            delete API.Nodes[peerId];
-                            delete API.peers[peerId];
-                        });
-                        
-                        NewPeer.on('error', function (err) {
-                            //alert('' + err)
-                            self.addLog(err, "error:", "danger");
-                        });
-
-                        command = getUrlParam("command");
-                        if (command)
-                            conn.send(command);
-                        
-                        
-                        API.Peer.push(conn);
-                    });
-                }else{
-                    if(!MorePeope){
-                        var MorePeope = setTimeout(function(){
-                            self.loadPeers();
-                        }, 5000); 
-                    }
-                }
-            }else{
-                self.addLog(r, "Error cargando compañero:", "Danger");
-            }
-        },
-        loadPeerByHash(hash){
-            var self = this;
-            if(hash == '0000000000000000000000000000000000000000000000000000000000000000'){           
-                self.loadPeers();
-                return false;
-            }
-            self.logs.push({
-                text: "Cargando mas personas...",
-                title: "deMedallo:",
-                type: "secondary"
-            });
-            var arrayPeers = [];
-            instance.get('/peer', {
-                params: {
-                    hash: hash
-                }
-            })
-            .then(function (re) {
-                r = re.data;
-                self.validateLoadPeer(r);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-        },
-        loadPeers(){
-            var self = this;
-            self.logs.push({
-                text: "Cargando Ultima persona conectada...",
-                title: "deMedallo: ",
-                type: "secondary"
-            });
-            var arrayPeers = [];
-            instance.get('/peer', {
-                params: {
-                    
-                }
-            })
-            .then(function (re) {
-                r = re.data;
-                self.validateLoadPeer(r);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-            
+        createNode(peerId){
+            API.createConnection(peerId);
         },
         addLog(e, title='Recibido:', type='info'){
             var self = this;
@@ -462,13 +255,6 @@ var Principal = new Vue({
                 type: type
             });
             
-            /*
-            Vue.set(Principal.messages, {
-                text: e,
-                title: title,
-                type: type
-            })
-            */
         },
         addMessage(e, title='Recibido:', type='info'){
             var self = this;
@@ -479,13 +265,6 @@ var Principal = new Vue({
                 type: type
             });
             
-            /*
-            Vue.set(Principal.messages, {
-                text: e,
-                title: title,
-                type: type
-            })
-            */
         },
         Conectar(){
             var self = this;
@@ -501,17 +280,19 @@ var Principal = new Vue({
                 <router-link tag="a" class="navbar-brand" to="/">deMedallo</router-link>
 				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
 				<div class="collapse navbar-collapse" id="navbarCollapse">
-					<form class="navbar-nav mr-auto form-inline" method="search" ><!--  action="javascript:false; " @submit="submitSearch" -->
-						<input class="form-control mr-sm-2" type="text" placeholder="¿Que Buscas?" aria-label="¿Que Buscas?" value=""  name="q" v-model="search_text" onfocus="this.value = '';" onblur="if (this.value == '') {this.value = '';}" />
-						<button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+					<form class="navbar-nav mr-auto form-inline" method="search" action="javascript:false; " @submit="nodeSearch">
+						<input class="form-control mr-sm-2" type="text" placeholder="Agregar nodo" aria-label="¿Que Buscas?" value=""  name="q" v-model="search_node" onfocus="this.value = '';" onblur="if (this.value == '') {this.value = '';}" />
+						<button class="btn btn-outline-success my-2 my-sm-0" type="submit">Agregar</button>
 					</form>
 					<ul class="navbar-nav mt-2 mt-md-0">						
 						<!-- -->
-						<li class="nav-item" v-if="connect == false"><a class="nav-link" href="javascript:false;" @click="Conectar()"><i class="fa fa-sign-in"></i> Conectar</a></li>
-						<li class="nav-item" v-if="connect == false"><a class="nav-link"><i class="fa fa-ban"></i> No Conectado</a></li>
+                        <router-link tag="li" class="nav-item" to="/createWallet">Billetera</router-link>
+						<li class="nav-item" v-if="nodoCreate == false"><a class="nav-link" href="javascript:false;" @click="createMyNode()"><i class="fa fa-sign-in"></i> Crear Nodo</a></li>
+						<li class="nav-item" v-if="connect == false"><a class="nav-link"><i class="fa fa-connectdevelop"></i>No Conectado</a></li>
 						<li class="nav-item" v-if="connect == true"><a class="nav-link"><i class="fa fa-connectdevelop"></i>Conectado</a></li>
-						<li class="nav-item"><a class="nav-link"><i class="fa fa-user"></i> {{ MePeerId }}</a></li>
-						<li class="nav-item"><a class="nav-link"><i class="fa fa-user"></i> {{ messageStatus }}</a></li>
+						<li class="nav-item"><a class="nav-link" if="nodoCreate == true"><i class="fa fa-user"></i> {{ MePeerId }}</a></li>
+						<li class="nav-item"><a class="nav-link" if="nodoCreate == true"><i class="fa fa-user"></i> {{ statusAPI }}</a></li>
+                        
                         
                         <li class="nav-item dropdown">
 							<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Crear</a>
@@ -528,14 +309,15 @@ var Principal = new Vue({
             <div class="content">
                 <div class="container">
                     <div class="real row">
-                        <div class="col-sm-3">
+                        <div class="col-sm-4">
                             <div class="panel panel-default">
                               <div class="panel-heading">Nodos ( {{ totalConnect }} / {{ peersTotal }} )</div> 
                                 <table class="table table-responsive">
-                                    <tr v-for="node in nodes" :key="node.peerId">
+                                    <tr v-for="node in nodesStatus" :key="node.peerId" v-if="node.peerId != MePeerId">
                                         <td>
-                                            <div class="led-green" v-if="node.connect == true"></div>
-                                            <div class="led-gray" v-if="node.connect == false"></div>
+                                            <div class="led-green" v-if="node.connect == 1"></div>
+                                            <div class="led-gray" v-else-if="node.connect == 0"></div>
+                                            <div class="led-orange" v-else-if="node.connect == 2"></div>
                                         </td>
                                         <td>{{ node.peerId }}</td>
                                         <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)">Ping</a></td>
@@ -544,8 +326,20 @@ var Principal = new Vue({
                                     </tr>
                                 </table>
                             </div>
+                            
+                            
+                            <div class="panel panel-default">
+                              <div class="panel-heading">Encontrados</div> 
+                                <table class="table table-responsive">
+                                    <tr v-for="node in nodesEnables" :key="node.peerId" v-if="node.peerId != MePeerId">
+                                        <td>{{ node.peerId }}</td>
+                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="createNode(node.peerId)">Conectar</a></td>
+                                        <!-- {{ node.data.timestamp }} -->
+                                    </tr>
+                                </table>
+                            </div>
                         </div>
-                        <div class="col-sm-9">
+                        <div class="col-sm-8">
                             <transition>
                                 <keep-alive>
                                     <router-view></router-view>
@@ -558,10 +352,10 @@ var Principal = new Vue({
                         <div class="col-sm-12 pre-scrollable" style="max-height: calc(25vh);min-height: calc(25vh);">
                             <table class="table table-responsive_">
                                 <tbody class="">
-                                    <tr v-for="log in logs">
+                                    <tr v-for="log in logsAPI">
                                         <td>
-                                            <div v-bind:class="'alert alert-' + log.type " >
-                                              <strong>{{ log.title }}</strong> {{ log.text }}
+                                            <div v-bind:class="'alert alert-secondary'" >
+                                              <strong>{{ log.timestamp }}</strong> {{ log.text }}
                                             </div>
                                         </td>
                                     </tr>
