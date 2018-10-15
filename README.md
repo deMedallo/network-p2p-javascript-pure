@@ -6,4 +6,4 @@ las billeretas se basan en una dirección de correo electronico y una contraseñ
 
 ## DEMO
 
-https://demedallo.github.io/blockchain-js/
+http://demedallo.com/bc/
