@@ -65,16 +65,12 @@ const homePage = Vue.component('homePage', {
     },
 	template: `
         <div>
-            <div class="col-sm-12 pre-scrollable" style="max-height: calc(50vh);min-height: calc(50vh);">
+            <div class="col-sm-12 pre-scrollable bg-console" style="max-height: calc(50vh);min-height: calc(50vh);">
                 <div v-for="msg in $parent.messagesAPI">
                     <div v-bind:class="'alert alert-' + msg.type" >
                       <strong>{{ msg.from }} => {{ msg.to }}</strong> {{ msg.text }}
                     </div>
                 </div>
-            </div>
-            <div class="col-sm-12">
-                <textarea class="form-control" v-model="$parent.message"></textarea>
-                <!-- <button @click="SendMessage" class=\"btn btn-info\">Enviar</button> -->
             </div>
         </div>
 	`
@@ -101,6 +97,11 @@ var Principal = new Vue({
 		connect: false,
 		nodoCreate: false,
 		statusAPI: '',
+		myMessages: {
+            "ul": {
+                as: 'as'
+            }
+        },
 		messagesAPI: [],
 		logsAPI: [],
 		MePeerId: '',
@@ -140,12 +141,14 @@ var Principal = new Vue({
                 self.messagesAPI = API.getMessages();
                 self.logsAPI = API.getLogs();
                 self.statusAPI = API.getStatus();
+                self.myMessages = API.getMyMessages();
             }, 1000);
             setInterval(function() {
                 self.MePeerId = API.peerId;
                 self.connect = API.connectStatus;
                 
                 self.lastPing = new Date();
+                
             }, 5000);
         },
         nodeSearch(){
@@ -164,46 +167,10 @@ var Principal = new Vue({
         },
         messagePeer(peerId){
             var self = this;
-            
-            var msg = {};
-            msg.type = 'message';
-            msg.from = self.MePeerId;
-            msg.to = peerId;
-            msg.text = self.message;
-            
-            self.addMessage(msg.text, 'Enviando: ', 'info');
-            
-            self.sendAll(msg);
-        },
-        pingPeerResponse(data){
-            var self = this;
-            
-            self.bcPing[data.hash] = data;
-            var ping = {};
-            ping.peerId = self.MePeerId;
-            ping.hash = data.hash;
-            ping.type = 'ping';
-            ping.from = data.peerId;
-            ping.to = self.MePeerId;
-            ping.response = true;
-            
-            API.SendAll(ping);
-        },
-        messageResponse(data){
-            console.log('messageResponse');
-            var self = this;
-            
-            self.bcPing[data.hash] = data;
-            var msg = {};
-            msg.peerId = self.MePeerId;
-            msg.hash = data.hash;
-            msg.text = data.text;
-            msg.type = 'message';
-            msg.from = data.peerId;
-            msg.to = self.MePeerId;
-            msg.response = true;
-            
-            API.SendAll(msg);
+            API.sendMessage({
+                to: peerId,
+                text: self.message
+            });
         },
         createMyNode(){   
             var self = this;  
@@ -270,6 +237,12 @@ var Principal = new Vue({
             var self = this;
             self.addLog("Conectando...", 'deMedallo', 'secondary');
             self.loadPeers();
+        },
+        clearMessages(){
+            API.clearMessages();
+        },
+        clearLogs(){
+            API.clearLogs();
         }
 	},
 	beforeCreate:function(){
@@ -284,14 +257,12 @@ var Principal = new Vue({
 						<input class="form-control mr-sm-2" type="text" placeholder="Agregar nodo" aria-label="¿Que Buscas?" value=""  name="q" v-model="search_node" onfocus="this.value = '';" onblur="if (this.value == '') {this.value = '';}" />
 						<button class="btn btn-outline-success my-2 my-sm-0" type="submit">Agregar</button>
 					</form>
-					<ul class="navbar-nav mt-2 mt-md-0">						
-						<!-- -->
-                        <router-link tag="li" class="nav-item" to="/createWallet">Billetera</router-link>
+					<ul class="navbar-nav mt-2 mt-md-0">
+						<li class="nav-item"><router-link tag="a" class="nav-link" to="/">Consola</router-link></li>
+                        
 						<li class="nav-item" v-if="nodoCreate == false"><a class="nav-link" href="javascript:false;" @click="createMyNode()"><i class="fa fa-sign-in"></i> Crear Nodo</a></li>
-						<li class="nav-item" v-if="connect == false"><a class="nav-link"><i class="fa fa-connectdevelop"></i>No Conectado</a></li>
-						<li class="nav-item" v-if="connect == true"><a class="nav-link"><i class="fa fa-connectdevelop"></i>Conectado</a></li>
-						<li class="nav-item"><a class="nav-link" if="nodoCreate == true"><i class="fa fa-user"></i> {{ MePeerId }}</a></li>
-						<li class="nav-item"><a class="nav-link" if="nodoCreate == true"><i class="fa fa-user"></i> {{ statusAPI }}</a></li>
+						<li class="nav-item"><a class="nav-link" if="nodoCreate == true && MePeerId != ''"><i class="fa fa-user"></i> {{ MePeerId }}</a></li>
+						<li class="nav-item"><a class="nav-link" if="nodoCreate == true">{{ statusAPI }}</a></li>
                         
                         
                         <li class="nav-item dropdown">
@@ -300,6 +271,10 @@ var Principal = new Vue({
                                 <router-link tag="a" class="dropdown-item" to="/createWallet">Billetera</router-link>
 							</div>
 						</li>
+						<li class="nav-item"><a class="nav-link" @click="clearLogs"><i class="fa fa-eraser"></i> Logs</a></li>
+						<li class="nav-item"><a class="nav-link" @click="clearMessages"><i class="fa fa-eraser"></i> Mensajes</a></li>
+						<li class="nav-item" v-if="connect == false"><a class="nav-link"><i class="fa fa-connectdevelop"></i> No Conectado</a></li>
+						<li class="nav-item" v-if="connect == true"><a class="nav-link"><i class="fa fa-connectdevelop"></i> Conectado</a></li>
 					</ul>
 				</div>
 			</nav>
@@ -310,6 +285,10 @@ var Principal = new Vue({
                 <div class="container">
                     <div class="real row">
                         <div class="col-sm-4">
+                            <div class="col-sm-12">
+                                <textarea class="form-control" v-model="message"></textarea>
+                                <!-- <button @click="SendMessage" class=\"btn btn-info\">Enviar</button> -->
+                            </div>
                             <div class="panel panel-default">
                               <div class="panel-heading">Nodos ( {{ totalConnect }} / {{ peersTotal }} )</div> 
                                 <table class="table table-responsive">
@@ -329,15 +308,29 @@ var Principal = new Vue({
                             
                             
                             <div class="panel panel-default">
-                              <div class="panel-heading">Encontrados</div> 
+                              <div class="panel-heading">Más Nodos Encontrados</div> 
                                 <table class="table table-responsive">
                                     <tr v-for="node in nodesEnables" :key="node.peerId" v-if="node.peerId != MePeerId">
                                         <td>{{ node.peerId }}</td>
                                         <td><a href="#" class="btn btn-sm btn-secondary" @click="createNode(node.peerId)">Conectar</a></td>
-                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)">Ping</a></td>
-                                        <!-- {{ node.data.timestamp }} -->
+                                        <td><a href="#" class="btn btn-sm btn-info" @click="pingPeer(node.peerId)">Ping</a></td>
+                                        <td><a href="#" class="btn btn-sm btn-success" @click="messagePeer(node.peerId)">Enviar texto</a></td>
                                     </tr>
                                 </table>
+                            </div>
+                            
+                            
+                            
+                            <div class="col-sm-12 pre-scrollable" style="max-height: calc(50vh);min-height: calc(50vh);">
+                                <h3>Mensajes</h3>
+                                <div v-for="(msg, key, index) in myMessages" :key="key">
+                                    <div v-bind:class="'alert alert-secondary'" >
+
+                                        <strong v-if="msg.from == MePeerId">My  => {{ msg.to }}</strong>
+                                        <strong v-if="msg.to == MePeerId">{{ msg.from }}  => My</strong> 
+                                        <p>{{ msg.text }}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="col-sm-8">
@@ -350,18 +343,17 @@ var Principal = new Vue({
                         <div class="col-sm-12">
                             <span>{{ lastLog }}</span>
                         </div>
-                        <div class="col-sm-12 pre-scrollable" style="max-height: calc(25vh);min-height: calc(25vh);">
-                            <table class="table table-responsive_">
-                                <tbody class="">
-                                    <tr v-for="log in logsAPI">
-                                        <td>
-                                            <div v-bind:class="'alert alert-secondary'" >
-                                              <strong>{{ log.timestamp }}</strong> {{ log.text }}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="col-sm-12 pre-scrollable" style="max-height: calc(25vh);min-height: calc(25vh);overflow:auto;">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">Logs del Nodo</div>
+                                <div class="panel-body bg-console">
+                                    <div v-for="log in logsAPI">
+                                        <div v-bind:class="'alert alert-secondary'" >
+                                          <strong>{{ log.timestamp }}</strong> {{ log.text }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

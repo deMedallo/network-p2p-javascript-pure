@@ -22,18 +22,56 @@ API._nodeDetect = {};
 API._lastUpdate = new Date().getTime()/1000;
 API.messages = [];
 API.logs = [];
+API.myRecibeMessage = [];
+API.myMessages = {};
 
 API.addPeer = function(peerId){
     instance.post('/peer', {
       addPeer: peerId
     })
     .then(function (response) {
-        //console.log(response.data);
         console.log('Nodo Agregado a la Red.');
     })
     .catch(function (error) {
         console.log(error);
     });
+}
+
+API.SendShared = function(msg){
+    if(!msg.to){
+        console.log('Falta el destino:');
+        return false;
+    }
+    if(!msg.hash){ msg.hash = API.randomHash(); }
+    if(!msg.from){ msg.from = API.peerId; }
+    if(!msg.type){ msg.type = 'none'; }
+    if(!msg.data){ msg.data = {}; }
+    if(!msg.txHistory){ msg.txHistory = []; }
+    
+    if(msg.type != 'none'){
+        for (var k in API.Peer){
+            if (typeof API.Peer[k] !== 'function') {
+                if(API.Peer[k].open == true){
+                    API.Peer[k].send(msg);
+                }
+            }
+        }
+    }
+}
+
+API.sendMessage = function(msg){
+    if(!msg.to || !msg.text){
+        console.log('Faltan campos del mensaje.');
+        return false;
+    }
+    
+    msg.hash = API.randomHash();
+    msg.type = 'message';
+    
+    API.SendShared(msg);
+    msg.recibe = false;
+    API.myMessages[msg.hash] = msg;
+    
 }
 
 API.SendAll = function(msg){
@@ -119,6 +157,7 @@ API.createConnection = function(peerId){
                     to: 'My',
                     text: "Info Recibida"
                 });
+                //API.Nodes[connection.peer].connect = 3;
                 API.ValidateDataRecibe(data);
             });
             
@@ -132,6 +171,7 @@ API.createConnection = function(peerId){
                     to: 'My',
                     text: "Connection has been lost."
                 });
+                API.Nodes[connection.peer].connect = 2;
                 connection.reconnect();
             });
             
@@ -141,6 +181,7 @@ API.createConnection = function(peerId){
                     to: 'My',
                     text: err
                 });
+                API.Nodes[connection.peer].connect = 0;
                 //API.setStatus('' + err)
             });
             
@@ -178,13 +219,6 @@ API.updateNodes = function(){
                 text: 'buuu'
             });
         }
-    }else{
-        /*
-        API.addMessage({
-            from: 'System',
-            to: 'My',
-            text: 'No estas conectado.',
-        });*/
     }
 }
 
@@ -192,9 +226,14 @@ API.sendPing = function(peerId){
     var ping = {};
     ping.hash = API.randomHash();
     ping.type = 'ping';
+    ping.from = API.peerId;
     ping.to = peerId;
     API.bcPing.push(ping.hash);
-    API.SendAll(ping);
+    API.SendShared(ping);
+}
+
+API.getMyMessages = function(){
+    return API.myMessages;
 }
 
 API.ValidateDataRecibe = function(data){
@@ -205,211 +244,264 @@ API.ValidateDataRecibe = function(data){
         console.log('Incompleta');
         console.log(data);
     }else{
-        
-        switch (data.type) {
-            case 'nodesList':
+        if(data.from == API.peerId){
+            console.log('Otra vez tu...');
+        }
+        else {
+            if(data.to == API.peerId){
+                console.log('Enviada para mi');
+                
                 if(API.hashHisory.indexOf(data.hash) <= -1){
-                    API.addLog({
-                        text: 'Validar nodesList'
-                    });
-            
-                    var target = data.data;
-                    for (var k in target){
-                        if (typeof target[k] !== 'function') {
-                            if(!API._nodeDetect[target[k].peerId] && target[k].peerId != API.peerId && !API.Peer[target[k].peerId]){
-                                API._nodeDetect[target[k].peerId] = target[k];
-                                
-                                
-                                API.addMessage({
-                                    from: 'System',
-                                    to: 'My',
-                                    text: 'Nuevo nodo: ID - '+ target[k].peerId
-                                });
-                            }                            
-                        }
-                    }
-                }
-                break;
-            case 'connectionResponse':
-                if(API.bcConnection.indexOf(data.hash) <= -1){
-                    if(data.to == API.peerId){
-                        API.addMessage({
-                            from: data.from,
-                            to: 'My',
-                            text: 'Creando Conexion'
-                        });
-                        
-                        if(!API.Nodes[data.from]){
-                            console.log('No existe Nodo.');
-                        }else{
+                    switch (data.type) {
+                        case 'nodesList':
                             API.addLog({
-                                text: 'Estatus cambiado: ' + data.from
+                                text: 'Validar nodesList'
                             });
                             
-                            API.Nodes[data.from].connect = 1;
-                            API.bcConnection.push(data.hash);
-                            
-                            var itemNew = {};
-                            itemNew.hash = data.hash;
-                            itemNew.from = API.peerId;
-                            itemNew.to = data.from;
-                            itemNew.type = 'connectionResponse';
-                            itemNew.response = true;
-                            
-                            API.Peer[data.from].send(itemNew);
-                        }
-                    }
-                }else{
-                    if(!data.response){
-                        console.log('Ya existe');
-                    }else{
-                        if(data.response == true){
-                            API.addMessage({
-                                from: 'System',
-                                to: 'My',
-                                text: 'Conectado con: '+ data.from
-                            });
-                            
-                            API.Nodes[data.from].connect = 1;
-                            
-                            var itemNew = {};
-                            itemNew.hash = API.randomHash();
-                            itemNew.from = API.peerId;
-                            itemNew.to = data.from;
-                            itemNew.type = 'nodesList';
-                            itemNew.data = API.Nodes;
-                            API.Peer[data.from].send(itemNew);
-                            API.addMessage({
-                                from: API.peerId,
-                                to: data.from,
-                                text: 'Compartiendo listado de nodos. '+ data.from
-                            });
-                            
-                        }
-                    }
-                }
-                break;
-            case 'connection':
-                if(API.bcConnection.indexOf(data.hash) <= -1){
-                    if(data.to == API.peerId){
-                        API.addMessage({
-                            from: data.from,
-                            to: 'My',
-                            text: 'Peticion de conexion recibida: '
-                        });
-                        API.addMessage({
-                            from: 'My',
-                            to: data.from,
-                            text: 'Enviando confirmacion de conexion'
-                        });
-                        
-                        var itemNew = {};
-                        itemNew.hash = API.randomHash();
-                        itemNew.from = API.peerId;
-                        itemNew.to = data.from;
-                        itemNew.type = 'connectionResponse';
-                        
-                        API.addLog({
-                            text: 'createConnection: '
-                        });
-                        var connectionResponse = API.mePeer.connect(data.from);
-                        
-                        connectionResponse.on('open', function (id) {
-                            var itemNew = {};
-                            itemNew.hash = API.randomHash();
-                            itemNew.from = API.peerId;
-                            itemNew.to = connectionResponse.peer;
-                            itemNew.type = 'connectionResponse';
-                            
-                            connectionResponse.send(itemNew);
-                            connectionResponse.on('data', function (data) {
-                                API.addLog({
-                                    text: "Data recieved Response Conection"
+                            var target = data.data;
+                            for (var k in target){
+                                if (typeof target[k] !== 'function') {
+                                    if(!API._nodeDetect[target[k].peerId] && target[k].peerId != API.peerId && !API.Peer[target[k].peerId]){
+                                        API._nodeDetect[target[k].peerId] = target[k];
+                                        
+                                        
+                                        API.addMessage({
+                                            from: 'System',
+                                            to: 'My',
+                                            text: 'Nuevo nodo: ID - '+ target[k].peerId
+                                        });
+                                    }
+                                }
+                            }
+                            break;
+                        case 'connectionResponse':
+                            if(API.bcConnection.indexOf(data.hash) <= -1){
+                                if(data.to == API.peerId){
+                                    API.addLog({
+                                        from: data.from,
+                                        to: 'My',
+                                        text: 'Creando Conexion'
+                                    });
+                                    
+                                    if(!API.Nodes[data.from]){
+                                        console.log('No existe Nodo.');
+                                    }else{
+                                        API.addLog({
+                                            text: 'Estatus cambiado: ' + data.from
+                                        });
+                                        
+                                        API.Nodes[data.from].connect = 1;
+                                        API.bcConnection.push(data.hash);
+                                        
+                                        var itemNew = {};
+                                        itemNew.hash = data.hash;
+                                        itemNew.from = API.peerId;
+                                        itemNew.to = data.from;
+                                        itemNew.type = 'connectionResponse';
+                                        itemNew.response = true;
+                                        
+                                        API.Peer[data.from].send(itemNew);
+                                    }
+                                }
+                            }else{
+                                if(!data.response){
+                                    console.log('Ya existe');
+                                }else{
+                                    if(data.response == true){
+                                        API.addMessage({
+                                            from: 'System',
+                                            to: 'My',
+                                            text: 'Conectado con: '+ data.from
+                                        });
+                                        
+                                        API.Nodes[data.from].connect = 1;
+                                        
+                                        var itemNew = {};
+                                        itemNew.hash = API.randomHash();
+                                        itemNew.from = API.peerId;
+                                        itemNew.to = data.from;
+                                        itemNew.type = 'nodesList';
+                                        itemNew.data = API.Nodes;
+                                        API.Peer[data.from].send(itemNew);
+                                        API.addLog({
+                                            from: API.peerId,
+                                            to: data.from,
+                                            text: 'Compartiendo listado de nodos. '+ data.from
+                                        });
+                                        
+                                    }
+                                }
+                            }
+                            break;
+                        case 'connection':
+                            if(API.bcConnection.indexOf(data.hash) <= -1){
+                                API.addMessage({
+                                    from: data.from,
+                                    to: 'My',
+                                    text: 'Peticion de conexion recibida: '
                                 });
-            
-                                console.log(data);
-                            });
-                            /** ---- **/
-                            
-                            var itemNew = {};
-                            itemNew.hash = API.randomHash();
-                            itemNew.from = API.peerId;
-                            itemNew.to = data.from;
-                            itemNew.type = 'connectionResponse';
-                            
-                        });
-                        
-                        if(!API.Peer[connectionResponse.peer]){
-                            
-                            API.Peer[connectionResponse.peer] = connectionResponse;
-                            
-                            var itemNew = {};
-                            itemNew.peerId = connectionResponse.peer;
-                            itemNew.connect = 0;
-                            API.Nodes[connectionResponse.peer] = itemNew;
-                            
-                        }
-                    }
-                }
-                break;
-            case 'message':
-                break;
-            case 'pingResponse':
-                if(API.bcPing.indexOf(data.hash) <= -1){
-                    API.addLog({
-                        text: 'No encontrado'
-                    });
-                }else{
-                    API.addLog({
-                        text: 'Respuesta de ping encontrada. ' + data.hash
-                    });
+                                API.addMessage({
+                                    from: 'My',
+                                    to: data.from,
+                                    text: 'Enviando confirmacion de conexion'
+                                });
+                                
+                                var itemNew = {};
+                                itemNew.hash = API.randomHash();
+                                itemNew.from = API.peerId;
+                                itemNew.to = data.from;
+                                itemNew.type = 'connectionResponse';
+                                
+                                API.addLog({
+                                    text: 'createConnection: '
+                                });
+                                var connectionResponse = API.mePeer.connect(data.from);
+                                
+                                connectionResponse.on('open', function (id) {
+                                    var itemNew = {};
+                                    itemNew.hash = API.randomHash();
+                                    itemNew.from = API.peerId;
+                                    itemNew.to = connectionResponse.peer;
+                                    itemNew.type = 'connectionResponse';
+                                    
+                                    connectionResponse.send(itemNew);
+                                    connectionResponse.on('data', function (data) {
+                                        API.addLog({
+                                            text: "Data recieved Response Conection"
+                                        });
                     
-                    API.addMessage({
-                        type: 'success',
-                        from: data.from,
-                        to: data.to,
-                        text: 'Ping recibido.'
-                    });
-                }
-                break;
-            case 'ping':
-                if(API.bcPing.indexOf(data.hash) <= -1){
-                    if(data.to == API.peerId){
-                        API.addLog({
-                            text: 'Ping recibido por: ' + data.from
-                        });
-                        
-                        API.addLog({
-                            text: 'Enviando confirmacion de ping a: ' + data.from
-                        });
-                        data.type = 'pingResponse';
-                        data.from = API.peerId;
-                        data.to = data.from;
-                        API.SendAll(data);
-                        API.bcPing.push(data.hash);
-                        //console.addLog(JSON.stringify(data));
-                        //API.pingPeerResponse(data);
-                    }
-                    /*
-                    else if(data.to == API.peerId && data.response == true){
-                        if(API.hashHisory.indexOf(data.hash) <= -1){
-                            alert('Recibida respuesta de ping ' + data.from);
-                            API.hashHisory.push(data.hash);
-                        }
-                    }
-                    else{
-                        if(API.hashHisory.indexOf(data.hash) <= -1){
-                            console.log('Retransamitir ');
-                            API.bcPing.push(data.hash);
-                        }
-                    }*/
+                                        console.log(data);
+                                    });
+                                    
+                                    var itemNew = {};
+                                    itemNew.hash = API.randomHash();
+                                    itemNew.from = API.peerId;
+                                    itemNew.to = data.from;
+                                    itemNew.type = 'connectionResponse';
+                                    
+                                });
+                                
+                                if(!API.Peer[connectionResponse.peer]){
+                                    
+                                    API.Peer[connectionResponse.peer] = connectionResponse;
+                                    
+                                    var itemNew = {};
+                                    itemNew.peerId = connectionResponse.peer;
+                                    itemNew.connect = 0;
+                                    API.Nodes[connectionResponse.peer] = itemNew;
+                                    
+                                }
+                            }
+                            break;
+                        case 'messageRecibe':
+                            if(data.recibe == true && API.myMessages[data.hash].recibe == false){
+                                API.addMessage({
+                                    type: 'warning',
+                                    from: data.from,
+                                    to: 'My',
+                                    text: 'El mensaje llego a su destino ' + data.hash
+                                });
+                                API.myMessages[data.hash].recibe = true;
+                            }
+                            break;
+                        case 'message':
+                            if(API.myRecibeMessage.indexOf(data.hash) <= -1){                                
+                                API.addMessage({
+                                    type: 'success',
+                                    from: data.from,
+                                    to: 'My',
+                                    text: data.text
+                                });
+                                
+                                API.myMessages[data.hash] = data;
+                                /* Enviar Mensaje */
+                                API.SendShared({
+                                    hash: data.hash,
+                                    type: 'messageRecibe',
+                                    to: data.from,
+                                    recibe: true
+                                });
+                                
+                                API.myRecibeMessage[data.hash] = data;
+                            }
+                            break;
+                        case 'pingResponse':
+                            if(API.bcPing.indexOf(data.hash) <= -1){
+                                API.addLog({
+                                    text: 'No encontrado'
+                                });
+                            }else{
+                                API.addLog({
+                                    text: 'Respuesta de ping encontrada. ' + data.hash
+                                });
+                                
+                                if(data.response == true){
+                                    API.addMessage({
+                                        type: 'success',
+                                        from: data.from,
+                                        to: 'My',
+                                        text: 'Ping recibido.'
+                                    });
+                                }
+                            }
+                            break;
+                        case 'ping':
+                            if(API.bcPing.indexOf(data.hash) <= -1){                                
+                                API.addMessage({
+                                    type: 'info',
+                                    from: data.from,
+                                    to: 'My',
+                                    text: 'Ping recibido.'
+                                });
+                                API.addMessage({
+                                    type: 'info',
+                                    from: 'My',
+                                    to: data.from,
+                                    text: 'Enviando confirmacion de ping. '
+                                });
+                                
+                                data.type = 'pingResponse';
+                                data.to = data.from;
+                                data.from = API.peerId;
+                                data.response = true;
+                                API.SendShared(data);
+                                API.bcPing.push(data.hash);
+                            }else{
+                                console.log('log addicional ping');
+                            }
+                            break;
+                        default:
+                            break;
+                    };
+                    API.hashHisory.push(data.hash);
                 }else{
                     console.log('log addicional');
                 }
-                break;
-            default:
-                break;
-        };
+            }else{
+                if(API.hashHisory.indexOf(data.hash) <= -1){
+                    API.addLog({
+                        text: 'No existe en el hisorial, se va a transmitir y esperar una verificacion.'
+                    });
+                    API.hashHisory.push(data.hash);
+                    API.SendShared(data);
+                }else{
+                    API.addLog({
+                        text: 'Se va a firmar y a retransmiir...'
+                    });
+                    
+                    if(data.txHistory.length >= 50){
+                        console.log('demaciadas tx');
+                        console.log(data.txHistory.length);
+                    }
+                    
+                    data.txHistory.push({
+                        hash: API.randomHash(),
+                        peerId: API.peerId
+                    });
+                    API.SendShared(data);
+                };
+            };
+        }
     }
 }
 
@@ -496,18 +588,8 @@ API.createMyNode = function(){
                 });
             });
             
-            //API.Peer.push(meConn);
-            
             API.meConn = meConn;
         }
-        /*
-            datos = {
-                hash: API.randomHash(),
-                type: 'firstConnect'
-            };
-            console.log('Solicitando Credenciales.');
-            console.log(datos);
-            c.send(datos);*/
     });
     
     API.mePeer = mePeer;

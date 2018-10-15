@@ -1,4 +1,3 @@
-
 body {
   /* padding-top: 3rem; */
   padding-bottom: 3rem;
@@ -467,3 +466,38 @@ sass styles
   @include blink_led(blinkGreen);
 }
 */
+
+
+
+
+.bg-console {
+    background-color: rgba(0,0,0, 1);
+}
+
+.bg-console .alert {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: gray;
+}
+
+.bg-console .alert-danger strong {
+    color: #6a1015;
+}
+.bg-console .alert-warning strong {
+    color: #ff0;
+}
+.bg-console .alert-info strong {
+    color: #5d9cec;
+}
+.bg-console .alert-success strong {
+    color: #80bd42;
+}
+.bg-console .alert-default strong {
+    color: #6c757d;
+}
+.bg-console .alert-primary strong {
+    color: #e83e8c;
+}
+.bg-console .alert-secondary strong {
+    color: #b5b6b6;
+}
