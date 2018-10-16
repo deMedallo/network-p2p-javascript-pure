@@ -2,6 +2,7 @@ body {
   /* padding-top: 3rem; */
   padding-bottom: 3rem;
   color: #5a5a5a;
+  background-color: var(--dark);
 }
 
 main[role="main"] {
@@ -472,12 +473,23 @@ sass styles
 
 .bg-console {
     background-color: rgba(0,0,0, 1);
+    font-family: consolas;
+    font-size: 0.8em;
+    font-size: 0.8em;
+    line-height: 1.5em;
+    padding: 0.5em;
 }
 
 .bg-console .alert {
     background-color: transparent !important;
     border-color: transparent !important;
     color: gray;
+    
+    position: relative;
+    padding: .3rem;
+    margin-bottom: 0;
+    border: transparent;
+    border-radius: 0;
 }
 
 .bg-console .alert-danger strong {

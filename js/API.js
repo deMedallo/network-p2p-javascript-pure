@@ -5,7 +5,7 @@ const instance = axios.create({
 });
 
 var API = {};
-API.connectStatus = false;
+API.connectStatus = 0;
 API.mePeer = null;
 API.meConn = null;
 API.peerId = null;
@@ -237,9 +237,6 @@ API.getMyMessages = function(){
 }
 
 API.ValidateDataRecibe = function(data){
-    API.addLog({
-        text: 'Validando info recibida'
-    });    
     if(!data.from || !data.to || !data.hash || !data.type){
         console.log('Incompleta');
         console.log(data);
@@ -537,6 +534,7 @@ API.createMyNode = function(){
         API.addLog({
             text: "En espera de conexión..."
         });
+        API.connectStatus = 2;
     });
     
     mePeer.on('connection', function (c) {
@@ -552,7 +550,7 @@ API.createMyNode = function(){
             API.addLog({
                 text: "Conectado"
             });
-            API.connectStatus = true;
+            API.connectStatus = 1;
             
             
             
@@ -571,13 +569,14 @@ API.createMyNode = function(){
                     text: "Connection reset, Awaiting connection..."
                 });
                 meConn = null;
-                API.connectStatus = false;
+                API.connectStatus = 2;
             });
             mePeer.on('disconnected', function () {
                 API.setStatus("Connection has been lost.");
                 API.addLog({
                     text: "Connection has been lost."
                 });
+                API.connectStatus = 2;
                 mePeer.reconnect();
             });
             
@@ -586,6 +585,7 @@ API.createMyNode = function(){
                 API.addLog({
                     text: err
                 });
+                API.connectStatus = 0;
             });
             
             API.meConn = meConn;
