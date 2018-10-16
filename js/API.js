@@ -63,8 +63,41 @@ API.commands = {
             }
         },
         result: 'nodesEnablesConsole:infoComplete'
+    },
+    addPeer: {
+        fields: {
+            'nodeId': {
+                type: 'string',
+                position: 0,
+                help: 'Nodo para agregar.',
+            },
+        },
+        result: 'createConnectionConsole:nodeId'
     }
 };
+
+API.createConnectionConsole = function(nodeId){
+    if(!nodeId){
+        
+    }else{
+        if(nodeId != API.peerId){
+            API.addMessage({
+                type: 'warning',
+                from: 'System',
+                to: 'My',
+                text: 'Buscando conexion con Nodo: ' + nodeId
+            });
+            API.createConnection(nodeId);
+        }else{
+            API.addMessage({
+                type: 'warning',
+                from: 'System',
+                to: 'My',
+                text: 'No puedes agregar tu propio nodo.'
+            });
+        }
+    }
+}
 
 API.nodesEnablesConsole = function(json=false){
     var textResult = '';
@@ -385,8 +418,11 @@ API.ValidateDataRecibe = function(data){
                                     if(!API.Nodes[data.from]){
                                         console.log('No existe Nodo.');
                                     }else{
-                                        API.addLog({
-                                            text: 'Conectado : ' + data.from,
+                                        API.addMessage({
+                                            type: 'success',
+                                            from: data.from,
+                                            to: 'My',
+                                            text: 'Conectado: ' + data.from,
                                             icon: 'fa fa-sign-in'
                                         });
                                         
@@ -657,6 +693,7 @@ API.console = function(lineCode){
                             to: 'My',
                             text: 'Falta valor ' + k + '. Ayuda: ' + target[k].help
                         });
+                        return false;
                     }else{
                         valuesComm[k] = porciones[item];
                     }
@@ -704,6 +741,12 @@ API.createMyNode = function(){
         API.setStatus('Nodo Creado, ID: ' + id);
         API.addLog({
             text: 'Nodo Creado, ID: ' + id
+        });
+        API.addMessage({
+            type: 'success',
+            from: 'System',
+            to: 'My',
+            text: 'Nodo Creado: Tu ID es: ' + id
         });
         API.peerId = id;
     });
@@ -857,8 +900,6 @@ API.clearMessages = function() {
 
 API.detectCodeConsole = function(e, element){
     if (e.keyCode == 13) {
-        console.log(e);
-        console.log(element);
         if(!element.value){
             console.log('No hay valor');
         }else{

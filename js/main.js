@@ -53,6 +53,78 @@ const createWalletPage = Vue.component('createWalletPage', {
         </div>
 	`
 });
+
+const helpConsole = Vue.component('helpConsole', {
+    methods: {
+        SendMessage(){
+            var self = this;
+            self.$parent.sendMessage();
+        }
+    },
+    mounted(){
+		var self = this;
+    },
+	template: `
+        <div>
+            <div class="col-sm-12">
+                <h3>Comandos para la consola</h3>
+                <table class="table">
+                    <tr>
+                        <th>Comando</th>
+                        <th>Descripcion</th>
+                        <th>Atributos</th>
+                        <th>Modo de uso</th>
+                    </tr>
+                    <tr>
+                        <th>ping</th>
+                        <td>Enviar ping a un nodo.</td>
+                        <td>
+                            <ul>
+                                <li><b>nodeId</b>: Id del nodo de destino.</li>
+                            </ul>
+                        </td>
+                        <td>ping {nodeId}</td>
+                    </tr>
+                    <tr>
+                        <th>sendMessage</th>
+                        <td>Enviar texto o mensaje a un nodo.</td>
+                        <td>
+                            <ul>
+                                <li><b>nodeId</b>: Id del nodo de destino.</li>
+                                <li><b>text</b>: Texto a enviar.</li>
+                            </ul>
+                        </td>
+                        <td>sendMessage {nodeId} {text}</td>
+                    </tr>
+                    <tr>
+                        <th>listPeer</th>
+                        <td>
+                            Obtener listado de los nodos conectados (Se muestra en json si esta habilitado).
+                        </td>                                    
+                        <td>
+                            <ul>
+                                <li><b>infoComplete</b>: Informacion completa true/false</li>
+                            </ul>
+                        </td>
+                        <td>listPeer {infoComplete}</td>
+                    </tr>
+                    <tr>
+                        <th>addPeer</th>
+                        <td>Agregar un nodo nuevo.</td>                                    
+                        <td>
+                            <ul>
+                                <li><b>nodeId</b>: Id del nodo para agregar.</li>
+                            </ul>
+                        </td>
+                        <td>addPeer {nodeId}</td>
+                    </tr>
+                </table>
+            </div>
+            <hr>
+            <br>
+        </div>
+	`
+});
 const homePage = Vue.component('homePage', {
     methods: {
         SendMessage(){
@@ -86,6 +158,7 @@ const homePage = Vue.component('homePage', {
 const routes = [
 	{ path: '/', name: 'Home', component: homePage },
 	{ path: '/createWallet', name: 'createWallet', component: createWalletPage },
+	{ path: '/helpConsole', name: 'helpConsole', component: helpConsole },
 ];
 
 const router = new VueRouter({
@@ -285,7 +358,8 @@ var Principal = new Vue({
 							<div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
                                 <a class="dropdown-item" @click="clearLogs"><i class="fa fa-eraser"></i> Limpiar Logs</a>
                                 <a class="dropdown-item" @click="clearMessages"><i class="fa fa-eraser"></i> Limpiar Consola</a>
-                                <router-link tag="a" class="dropdown-item" to="/createWallet">Billetera</router-link>
+                                <!-- <router-link tag="a" class="dropdown-item" to="/createWallet">Billetera</router-link> -->
+                                <router-link tag="a" class="dropdown-item" to="/helpConsole">Comandos Consola</router-link>
 							</div>
 						</li>
 					</ul>
@@ -311,7 +385,6 @@ var Principal = new Vue({
                                         <td>{{ node.peerId }}</td>
                                         <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)"><i class="fa fa-check"></i></a></td>
                                         <td><a href="#" class="btn btn-sm btn-success" @click="messagePeer(node.peerId)"><i class="fa fa-font"></i></a></td>
-                                        <!-- {{ node.data.timestamp }} -->
                                     </tr>
                                 </table>
                                 <hr>
@@ -368,47 +441,6 @@ var Principal = new Vue({
                         </div>
                     </div>
                     <div class="col-sm-12">
-                        <h3>Comandos para la consola</h3>
-                        <table class="table">
-                            <tr>
-                                <th>Comando</th>
-                                <th>Atributos</th>
-                                <th>Modo de uso</th>
-                            </tr>
-                            <tr>
-                                <th>ping</th>
-                                <td>Enviar ping a un nodo.</td>
-                                <td>
-                                    <ul>
-                                        <li><b>nodeId</b>: Id del nodo de destino.</li>
-                                    </ul>
-                                </td>
-                                <td>ping {nodeId}</td>
-                            </tr>
-                            <tr>
-                                <th>sendMessage</th>
-                                <td>Enviar texto o mensaje a un nodo.</td>
-                                <td>
-                                    <ul>
-                                        <li><b>nodeId</b>: Id del nodo de destino.</li>
-                                        <li><b>text</b>: Texto a enviar.</li>
-                                    </ul>
-                                </td>
-                                <td>sendMessage {nodeId} {text}</td>
-                            </tr>
-                            <tr>
-                                <th>listPeer</th>
-                                <td>
-                                    Obtener listado de los nodos conectados (Se muestra en json si esta habilitado).
-                                </td>                                    
-                                <td>
-                                    <ul>
-                                        <li><b>infoComplete</b>: Informacion completa true/false</li>
-                                    </ul>
-                                </td>
-                                <td>listPeer {infoComplete}</td>
-                            </tr>
-                        </table>
                     </div>
                 </div>
             </div>
