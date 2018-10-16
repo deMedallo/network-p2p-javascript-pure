@@ -642,7 +642,7 @@ API.console = function(lineCode){
                 type: 'danger',
                 from: 'System',
                 to: 'My',
-                text: 'El comando no existe.'
+                text: 'El comando [' + command + '] no existe.'
             });
         }else{
             var target = API.commands[command].fields;
@@ -651,9 +651,6 @@ API.console = function(lineCode){
                 if (typeof target[k] !== 'function') {
                     var item = target[k].position + 1;
                     if(!porciones[item]){
-                        console.log('Falta valor');
-                        console.log(k);
-                        
                         API.addMessage({
                             type: 'danger',
                             from: 'System',
@@ -795,28 +792,6 @@ API.createMyNode = function(){
     API.mePeer = mePeer;
 }
 
-function getUrlParam(name) {
-    name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
-    var regexS = "[\\?&]" + name + "=([^&#]*)";
-    var regex = new RegExp(regexS);
-    var results = regex.exec(window.location.href);
-    if (results == null)
-        return null;
-    else
-        return results[1];
-};
-
-String.prototype.hashCode = function() {
-  var hash = 0, i, chr;
-  if (this.length === 0) return hash;
-  for (i = 0; i < this.length; i++) {
-    chr   = this.charCodeAt(i);
-    hash  = ((hash << 5) - hash) + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-  return hash;
-};
-
 API.getLogs = function(){
     return API.logs;
 }
@@ -887,9 +862,31 @@ API.detectCodeConsole = function(e, element){
         if(!element.value){
             console.log('No hay valor');
         }else{
-            console.log('Si encontro valor');
             this.console(element.value);
         }
         return false;
     }
 }
+
+function getUrlParam(name) {
+    name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+    var regexS = "[\\?&]" + name + "=([^&#]*)";
+    var regex = new RegExp(regexS);
+    var results = regex.exec(window.location.href);
+    if (results == null)
+        return null;
+    else
+        return results[1];
+};
+
+String.prototype.hashCode = function() {
+  var hash = 0, i, chr;
+  if (this.length === 0) return hash;
+  for (i = 0; i < this.length; i++) {
+    chr   = this.charCodeAt(i);
+    hash  = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+};
+
