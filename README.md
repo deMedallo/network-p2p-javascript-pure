@@ -6,6 +6,7 @@ http://demedallo.com/bc/
 
 ## Atributos Consola
 Algunos atributos compatibles con la consola Web.
+
 | Comando | Descripcion | Atributo | Modo de uso |
 |:---------:|-------------|----------|-------------|
 | **ping** | Enviar ping a un nodo. | * **nodeId** Id del nodo de destino.|  ping ``{nodeId}`` |
