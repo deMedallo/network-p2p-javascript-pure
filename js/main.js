@@ -69,10 +69,16 @@ const homePage = Vue.component('homePage', {
                 <div v-for="msg in $parent.messagesAPI">
                     <div v-bind:class="'alert alert-' + msg.type" >
                       <strong>[ {{ msg.timestamp }} ] </strong> 
-                      <strong>{{ msg.from }} => {{ msg.to }}</strong> {{ msg.text }}
+                      <strong>{{ msg.from }} => {{ msg.to }} : <i v-bind:class="msg.icon"></i></strong> {{ msg.text }}
                     </div>
                 </div>
             </div>
+            <div class="form-control-console bg-console" style="padding: 0;">
+                    <textarea class="form-control-console" v-model="$parent.message"></textarea>
+            </div>
+            <!-- <button @click="SendMessage" class=\"btn btn-info\">Enviar</button> -->
+            <hr>
+            <br>
         </div>
 	`
 });
@@ -105,7 +111,7 @@ var Principal = new Vue({
         },
 		messagesAPI: [],
 		logsAPI: [],
-		MePeerId: '',
+		MePeerId: 'Default',
 		hashHisory: [],
 		bcPing: [],
 		bcMessage: [],
@@ -259,28 +265,28 @@ var Principal = new Vue({
 						<button class="btn btn-outline-success my-2 my-sm-0" type="submit">Agregar</button>
 					</form>
 					<ul class="navbar-nav mt-2 mt-md-0">
-						<li class="nav-item"><router-link tag="a" class="nav-link" to="/">Consola</router-link></li>
+						<li class="nav-item"><router-link tag="a" class="nav-link" to="/"><i class="fa fa-code"></i> Consola</router-link></li>
                         
 						<li class="nav-item" v-if="nodoCreate == false"><a class="nav-link" href="javascript:false;" @click="createMyNode()"><i class="fa fa-sign-in"></i> Crear Nodo</a></li>
 						
-                        
-                        
-                        <li class="nav-item dropdown">
-							<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Crear</a>
-							<div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                                <router-link tag="a" class="dropdown-item" to="/createWallet">Billetera</router-link>
-							</div>
-						</li>
-						<li class="nav-item"><a class="nav-link" @click="clearLogs"><i class="fa fa-eraser"></i> Logs</a></li>
-						<li class="nav-item"><a class="nav-link" @click="clearMessages"><i class="fa fa-eraser"></i> Mensajes</a></li>
-                        
                         
 						<li class="nav-item"><a class="nav-link" if="nodoCreate == true">{{ statusAPI }}</a></li>
 						<li class="nav-item" v-if="connect == 0"><a class="nav-link"><div class="led-gray"></div></a></li>
 						<li class="nav-item" v-if="connect == 1"><a class="nav-link"><div class="led-green"></div></a></li>
 						<li class="nav-item" v-if="connect == 2"><a class="nav-link"><div class="led-orange"></div></a></li>
                         
-                        <li class="nav-item"><a class="nav-link" if="nodoCreate == true && MePeerId != ''"><i class="fa fa-user"></i> {{ MePeerId }}</a></li>
+						<li class="nav-item"><a class="nav-link"><i class="fa fa-user"></i> {{ MePeerId }}</a></li>
+                        
+                        <li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+							<div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                                <a class="dropdown-item" @click="clearLogs"><i class="fa fa-eraser"></i> Limpiar Logs</a>
+                                <a class="dropdown-item" @click="clearMessages"><i class="fa fa-eraser"></i> Limpiar Consola</a>
+                                <router-link tag="a" class="dropdown-item" to="/createWallet">Billetera</router-link>
+							</div>
+						</li>
 					</ul>
 				</div>
 			</nav>
@@ -291,12 +297,6 @@ var Principal = new Vue({
                 <div class="container">
                     <div class="real row">
                         <div class="col-sm-4">
-                            <div class="col-sm-12">
-                                <textarea class="form-control" v-model="message"></textarea>
-                                <!-- <button @click="SendMessage" class=\"btn btn-info\">Enviar</button> -->
-                                <hr>
-                                <br>
-                            </div>
                             <div class="panel panel-default">
                               <div class="panel-heading">Nodos ( {{ peersTotal }} )</div> 
                               <div class="panel-body">
@@ -308,8 +308,8 @@ var Principal = new Vue({
                                             <div class="led-orange" v-else-if="node.connect == 2"></div>
                                         </td>
                                         <td>{{ node.peerId }}</td>
-                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)">Ping</a></td>
-                                        <td><a href="#" class="btn btn-sm btn-success" @click="messagePeer(node.peerId)">Enviar texto</a></td>
+                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)"><i class="fa fa-check"></i></a></td>
+                                        <td><a href="#" class="btn btn-sm btn-success" @click="messagePeer(node.peerId)"><i class="fa fa-font"></i></a></td>
                                         <!-- {{ node.data.timestamp }} -->
                                     </tr>
                                 </table>
@@ -323,16 +323,16 @@ var Principal = new Vue({
                                 <table class="table table-responsive">
                                     <tr v-for="node in nodesEnables" :key="node.peerId" v-if="node.peerId != MePeerId">
                                         <td>{{ node.peerId }}</td>
-                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="createNode(node.peerId)">Conectar</a></td>
-                                        <td><a href="#" class="btn btn-sm btn-info" @click="pingPeer(node.peerId)">Ping</a></td>
-                                        <td><a href="#" class="btn btn-sm btn-success" @click="messagePeer(node.peerId)">Enviar texto</a></td>
+                                        <td><a href="#" class="btn btn-sm btn-info" @click="createNode(node.peerId)"><i class="fa fa-link"></i></a></td>
+                                        <td><a href="#" class="btn btn-sm btn-secondary" @click="pingPeer(node.peerId)"><i class="fa fa-check"></i></a></td>
+                                        <td><a href="#" class="btn btn-sm btn-success" @click="messagePeer(node.peerId)"><i class="fa fa-font"></i></a></td>
                                     </tr>
                                 </table>
                               </div>
                               <hr>
                             </div>
                             
-                            <div class="col-sm-12 pre-scrollable" style="max-height: calc(50vh);min-height: calc(50vh);">
+                            <div class="col-sm-12 pre-scrollable" style="max-height: calc(35vh);min-height: calc(35vh);overflow:auto;background-color:transparent;">
                                 <h3>Mensajes</h3>
                                 <div v-for="(msg, key, index) in myMessages" :key="key">
                                     <div v-bind:class="'alert alert-secondary'" >
@@ -359,7 +359,7 @@ var Principal = new Vue({
                                 <div class="panel-body bg-console">
                                     <div v-for="log in logsAPI">
                                         <div v-bind:class="'alert alert-secondary'" >
-                                          <strong>{{ log.timestamp }}</strong> {{ log.text }}
+                                          <strong>{{ log.timestamp }} <i v-bind:class="log.icon"></i></strong> {{ log.text }}
                                         </div>
                                     </div>
                                 </div>

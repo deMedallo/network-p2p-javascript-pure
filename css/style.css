@@ -2,7 +2,7 @@ body {
   /* padding-top: 3rem; */
   padding-bottom: 3rem;
   color: #5a5a5a;
-  background-color: var(--dark);
+  background-color: #f8f9fa;
 }
 
 main[role="main"] {
@@ -468,9 +468,6 @@ sass styles
 }
 */
 
-
-
-
 .bg-console {
     background-color: rgba(0,0,0, 1);
     font-family: consolas;
@@ -478,6 +475,20 @@ sass styles
     font-size: 0.8em;
     line-height: 1.5em;
     padding: 0.5em;
+    display: block;
+}
+
+.form-control-console {
+    display: block;
+    width: 100%;
+    height: calc(2.25rem + 2px);
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--light);
+    background-color: #343a40;
+    background-clip: padding-box;
+    border: transparent;
 }
 
 .bg-console .alert {

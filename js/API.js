@@ -1,3 +1,6 @@
+console.log("%cImportante! %cEsta consola es para desarrollo avanzado, Necesitas conocimientos en JavaScript, Bootstrap, jQuery, VUE y PeerJS.\n Si no sabes que estas haciendo te recomendamos cerrarla ya que pueden estan en riesgo tus datos.", "color: red; font-size:25px;", "color: blue; font-size:12px;");
+
+
 const instance = axios.create({
   baseURL: '/blockchain-php/www',
   timeout: 20000,
@@ -24,13 +27,14 @@ API.messages = [];
 API.logs = [];
 API.myRecibeMessage = [];
 API.myMessages = {};
+API._nodesShar = {};
 
 API.addPeer = function(peerId){
     instance.post('/peer', {
       addPeer: peerId
     })
     .then(function (response) {
-        console.log('Nodo Agregado a la Red.');
+        //console.log('Nodo Agregado a la Red.');
     })
     .catch(function (error) {
         console.log(error);
@@ -115,6 +119,30 @@ API.getStatusHistory = function(){
     return API._statusHistory;
 }
 
+API.nodesShar = function(){
+    var target1 = API._nodeDetect;
+    for (var k in target1){
+        if (typeof target1[k] !== 'function') {
+            var idPeer = target1[k].peerId;
+            if(!API._nodesShar[idPeer]){
+                API._nodesShar[idPeer] = {};
+                API._nodesShar[idPeer].peerId = idPeer;
+            }
+        }
+    }
+    var target2 = API.Nodes;
+    for (var k in target2){
+        if (typeof target2[k] !== 'function') {
+            var idPeer = target2[k].peerId;
+            if(!API._nodesShar[idPeer]){
+                API._nodesShar[idPeer] = {};
+                API._nodesShar[idPeer].peerId = idPeer;
+            }
+        }
+    }
+    return API._nodesShar;
+}
+
 API.createConnection = function(peerId){
     if(!API.Peer[peerId]){
         if(!API._nodeDetect[peerId]){
@@ -183,6 +211,7 @@ API.createConnection = function(peerId){
                 });
                 API.Nodes[connection.peer].connect = 0;
                 //API.setStatus('' + err)
+                delete API.Nodes[connection.peer];
             });
             
         });
@@ -204,14 +233,15 @@ API.updateNodes = function(){
         if((API._lastUpdate+10) <= update){
             API._lastUpdate = update;
             API.addLog({
-                text: 'Compartiendo nodos...'
+                text: 'Compartiendo nodos...',
+                icon: 'fa fa-flag-checkered'
             });
             
             var itemNew = {};
             //itemNew.hash = API.randomHash();
             itemNew.from = API.peerId;
             itemNew.type = 'nodesList';
-            itemNew.data = API.Nodes;
+            itemNew.data = API.nodesShar();
             
             API.SendAll(itemNew);
         }else{
@@ -252,7 +282,8 @@ API.ValidateDataRecibe = function(data){
                     switch (data.type) {
                         case 'nodesList':
                             API.addLog({
-                                text: 'Validar nodesList'
+                                text: 'Validar nodesList',
+                                icon: 'fa fa-connectdevelop'
                             });
                             
                             var target = data.data;
@@ -277,14 +308,16 @@ API.ValidateDataRecibe = function(data){
                                     API.addLog({
                                         from: data.from,
                                         to: 'My',
-                                        text: 'Creando Conexion'
+                                        text: 'Creando Conexion',
+                                        icon: 'fa fa-connectdevelop'
                                     });
                                     
                                     if(!API.Nodes[data.from]){
                                         console.log('No existe Nodo.');
                                     }else{
                                         API.addLog({
-                                            text: 'Estatus cambiado: ' + data.from
+                                            text: 'Conectado : ' + data.from,
+                                            icon: 'fa fa-sign-in'
                                         });
                                         
                                         API.Nodes[data.from].connect = 1;
@@ -323,7 +356,8 @@ API.ValidateDataRecibe = function(data){
                                         API.addLog({
                                             from: API.peerId,
                                             to: data.from,
-                                            text: 'Compartiendo listado de nodos. '+ data.from
+                                            text: 'Compartiendo listado de nodos. '+ data.from,
+                                            icon: 'fa fa-connectdevelop'
                                         });
                                         
                                     }
@@ -335,12 +369,14 @@ API.ValidateDataRecibe = function(data){
                                 API.addMessage({
                                     from: data.from,
                                     to: 'My',
-                                    text: 'Peticion de conexion recibida: '
+                                    text: 'Peticion de conexion recibida: ',
+                                    icon: 'fa fa-flag-checkered'
                                 });
                                 API.addMessage({
                                     from: 'My',
                                     to: data.from,
-                                    text: 'Enviando confirmacion de conexion'
+                                    text: 'Enviando confirmacion de conexion',
+                                    icon: 'fa fa-connectdevelop'
                                 });
                                 
                                 var itemNew = {};
@@ -350,7 +386,8 @@ API.ValidateDataRecibe = function(data){
                                 itemNew.type = 'connectionResponse';
                                 
                                 API.addLog({
-                                    text: 'createConnection: '
+                                    text: 'createConnection: ',
+                                    icon: 'fa fa-sign-in'
                                 });
                                 var connectionResponse = API.mePeer.connect(data.from);
                                 
@@ -366,8 +403,7 @@ API.ValidateDataRecibe = function(data){
                                         API.addLog({
                                             text: "Data recieved Response Conection"
                                         });
-                    
-                                        console.log(data);
+                                        API.ValidateDataRecibe(data);
                                     });
                                     
                                     var itemNew = {};
@@ -376,17 +412,38 @@ API.ValidateDataRecibe = function(data){
                                     itemNew.to = data.from;
                                     itemNew.type = 'connectionResponse';
                                     
+                                    
+                                    
+                                    connectionResponse.on('close', function () {
+                                        delete API.Nodes[connectionResponse.peer];
+                                    });
+                                    connectionResponse.on('disconnected', function () {
+                                        API.addMessage({
+                                            from: 'System',
+                                            to: 'My',
+                                            text: "connectionResponse has been lost."
+                                        });
+                                        API.Nodes[connectionResponse.peer].connect = 2;
+                                        connectionResponse.reconnect();
+                                    });
+                                    
+                                    connectionResponse.on('error', function (err) {
+                                        API.addMessage({
+                                            from: 'System',
+                                            to: 'My',
+                                            text: err
+                                        });
+                                        API.Nodes[connectionResponse.peer].connect = 0;
+                                        delete API.Nodes[connectionResponse.peer];
+                                    });
                                 });
                                 
                                 if(!API.Peer[connectionResponse.peer]){
-                                    
                                     API.Peer[connectionResponse.peer] = connectionResponse;
-                                    
                                     var itemNew = {};
                                     itemNew.peerId = connectionResponse.peer;
                                     itemNew.connect = 0;
                                     API.Nodes[connectionResponse.peer] = itemNew;
-                                    
                                 }
                             }
                             break;
@@ -437,7 +494,8 @@ API.ValidateDataRecibe = function(data){
                                         type: 'success',
                                         from: data.from,
                                         to: 'My',
-                                        text: 'Ping recibido.'
+                                        text: 'Ping recibido.',
+                                        icon: 'fa fa-check'
                                     });
                                 }
                             }
@@ -448,13 +506,15 @@ API.ValidateDataRecibe = function(data){
                                     type: 'info',
                                     from: data.from,
                                     to: 'My',
-                                    text: 'Ping recibido.'
+                                    text: 'Ping recibido.',
+                                    icon: 'fa fa-check-circle'
                                 });
                                 API.addMessage({
                                     type: 'info',
                                     from: 'My',
                                     to: data.from,
-                                    text: 'Enviando confirmacion de ping. '
+                                    text: 'Enviando confirmacion de ping. ',
+                                    icon: 'fa fa-exchange'
                                 });
                                 
                                 data.type = 'pingResponse';
@@ -475,13 +535,7 @@ API.ValidateDataRecibe = function(data){
                     console.log('log addicional');
                 }
             }else{
-                if(API.hashHisory.indexOf(data.hash) <= -1){
-                    API.addLog({
-                        text: 'No existe en el hisorial, se va a transmitir y esperar una verificacion.'
-                    });
-                    API.hashHisory.push(data.hash);
-                    API.SendShared(data);
-                }else{
+                if(API.hashHisory.indexOf(data.hash) <= -1){                    
                     API.addLog({
                         text: 'Se va a firmar y a retransmiir...'
                     });
@@ -489,12 +543,18 @@ API.ValidateDataRecibe = function(data){
                     if(data.txHistory.length >= 50){
                         console.log('demaciadas tx');
                         console.log(data.txHistory.length);
+                    }else{
+                        API.SendShared(data);
                     }
+                    /*
                     
                     data.txHistory.push({
                         hash: API.randomHash(),
                         peerId: API.peerId
                     });
+                    API.SendShared(data);*/
+                    
+                }else{
                     API.SendShared(data);
                 };
             };
@@ -521,18 +581,20 @@ API.createMyNode = function(){
             mePeer.reconnect();
         }
         else{
-            API.setStatus(id);
+            API.setStatus('Error: ');
             console.log(err);
             API.addLog({
                 text: error
             });
+            API.connectStatus = 2;
         }
     });
 
     mePeer.on('open', function () {
         API.setStatus("En espera de conexión...");
         API.addLog({
-            text: "En espera de conexión..."
+            text: "En espera de conexión...",
+            icon: 'fa fa-spinner',
         });
         API.connectStatus = 2;
     });
@@ -548,7 +610,8 @@ API.createMyNode = function(){
             var meConn = c;
             API.setStatus("Conectado");
             API.addLog({
-                text: "Conectado"
+                text: "Conectado",
+                icon: 'fa fa-plug'
             });
             API.connectStatus = 1;
             
@@ -559,14 +622,14 @@ API.createMyNode = function(){
             }, 25000);
             
             meConn.on('data', function (data) {
-                console.log('Info Recibida');
                 API.ValidateDataRecibe(data);
             });
         
             meConn.on('close', function () {
                 API.setStatus("Connection reset, Awaiting connection...");
                 API.addLog({
-                    text: "Connection reset, Awaiting connection..."
+                    text: "Connection reset, Awaiting connection...",
+                    icon: 'fa fa-repeat'
                 });
                 meConn = null;
                 API.connectStatus = 2;
@@ -574,7 +637,8 @@ API.createMyNode = function(){
             mePeer.on('disconnected', function () {
                 API.setStatus("Connection has been lost.");
                 API.addLog({
-                    text: "Connection has been lost."
+                    text: "Connection has been lost.",
+                    icon: 'fa fa-exclamation-circle'
                 });
                 API.connectStatus = 2;
                 mePeer.reconnect();
@@ -583,7 +647,8 @@ API.createMyNode = function(){
             mePeer.on('error', function (err) {
                 API.setStatus('' + err)
                 API.addLog({
-                    text: err
+                    text: err,
+                    icon: 'fa fa-exclamation-circle'
                 });
                 API.connectStatus = 0;
             });
@@ -622,12 +687,15 @@ API.getLogs = function(){
 }
 
 API.addLog = function(log){
+    if(!log.icon){ log.icon = 'fa '; }
+    
     if(!log.text){
         
     }else{
         var item = {};
         item.timestamp = new Date().getTime();
         item.text = log.text;
+        item.icon = log.icon;
         
         API.logs.reverse();
         API.logs.push(item);
@@ -638,7 +706,8 @@ API.addLog = function(log){
 API.clearLogs = function() {
     API.logs = [];
     API.addLog({
-        text: 'Logs cleared'
+        text: 'Logs cleared',
+        icon: 'fa fa-eraser'
     });
 };
 
@@ -648,6 +717,7 @@ API.getMessages = function(){
 
 API.addMessage = function(msg){
     if(!msg.type){ msg.type = 'secondary'; }
+    if(!msg.icon){ msg.icon = 'fa '; }
     
     if(!msg.text || !msg.from || !msg.to){
         
@@ -657,6 +727,7 @@ API.addMessage = function(msg){
         item.from = msg.from;
         item.to = msg.to;
         item.text = msg.text;
+        item.icon = msg.icon;
         item.timestamp = new Date().getTime();
         
         API.messages.reverse();
