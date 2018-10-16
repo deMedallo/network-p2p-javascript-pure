@@ -74,7 +74,7 @@ const homePage = Vue.component('homePage', {
                 </div>
             </div>
             <div class="form-control-console bg-console" style="padding: 0;">
-                    <textarea class="form-control-console" v-model="$parent.message"></textarea>
+                <textarea class="form-control-console" onkeypress="return API.detectCodeConsole(event, this)" v-model="$parent.message"></textarea>
             </div>
             <!-- <button @click="SendMessage" class=\"btn btn-info\">Enviar</button> -->
             <hr>
@@ -118,7 +118,7 @@ var Principal = new Vue({
 		nodesStatus: {},
 		nodesEnables: {},
 		totalConnect: 0,
-        peersTotal: API.Peer.length,
+        peersTotal: 0,
 		messages: [],
 		message: '',
 		lastLog: '',
@@ -149,6 +149,7 @@ var Principal = new Vue({
                 self.logsAPI = API.getLogs();
                 self.statusAPI = API.getStatus();
                 self.myMessages = API.getMyMessages();
+                self.peersTotal = API.Peer.length;
             }, 1000);
             setInterval(function() {
                 self.MePeerId = API.peerId;
@@ -170,7 +171,7 @@ var Principal = new Vue({
             }
         },
         pingPeer(peerId){
-            API.sendPing(peerId);
+            API.console('ping ' + peerId);
         },
         messagePeer(peerId){
             var self = this;

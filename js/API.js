@@ -1,6 +1,5 @@
 console.log("%cImportante! %cEsta consola es para desarrollo avanzado, Necesitas conocimientos en JavaScript, Bootstrap, jQuery, VUE y PeerJS.\n Si no sabes que estas haciendo te recomendamos cerrarla ya que pueden estan en riesgo tus datos.", "color: red; font-size:25px;", "color: blue; font-size:12px;");
 
-
 const instance = axios.create({
   baseURL: '/blockchain-php/www',
   timeout: 20000,
@@ -28,6 +27,18 @@ API.logs = [];
 API.myRecibeMessage = [];
 API.myMessages = {};
 API._nodesShar = {};
+API.commands = {
+    ping: {
+        fields: {
+            'to': {
+                type: 'string',
+                position: 0,
+                help: 'Nodo de destino para ping',
+            }
+        },
+        result: 'sendPing:to'
+    }
+};
 
 API.addPeer = function(peerId){
     instance.post('/peer', {
@@ -562,6 +573,63 @@ API.ValidateDataRecibe = function(data){
     }
 }
 
+API.console = function(lineCode){
+    if(lineCode != ''){
+        var porciones = lineCode.split(' ');
+        var command = porciones[0];
+        
+        if(!API.commands[command]){
+            API.addMessage({
+                from: 'System',
+                to: 'My',
+                text: 'El comando no existe.'
+            });
+        }else{
+            var target = API.commands[command].fields;
+            var valuesComm = {};
+            for (var k in target){
+                if (typeof target[k] !== 'function') {
+                    var item = target[k].position + 1;
+                    if(!porciones[item]){
+                        console.log('Falta valor');
+                        console.log(item);
+                    }else{
+                        valuesComm[k] = porciones[item];
+                    }
+                }
+            }
+            
+            var functi = API.commands[command].result.split(':');
+            var comand = functi[1].split(',');            
+            
+            console.log('Creando function');
+            
+            var parammms = [];
+            for (var a in comand){
+                if (typeof comand[a] !== 'function') {
+                    if(!valuesComm[comand[a]]){
+                        console.log('Faltan parametros');
+                    }else{
+                        parammms.push("'" + valuesComm[comand[a]] + "'")
+                    }
+                }
+            }
+            
+            var parammms = parammms.join(',');
+            var functionSmall = 'API.' + functi[0];
+            var functionFull = functionSmall + '(' + parammms + ')';
+            
+            functionSmall = eval(functionSmall);
+                
+            if (typeof functionSmall == 'function') {
+                console.log('isFunction');
+                functionFull = eval(functionFull);
+                console.log(functionFull);
+            }
+        }
+    } 
+}
+
 API.createMyNode = function(){
     //'Creando nodo'
     var mePeer = new Peer(null, {
@@ -745,3 +813,16 @@ API.clearMessages = function() {
     });
 };
 
+API.detectCodeConsole = function(e, element){
+    if (e.keyCode == 13) {
+        console.log(e);
+        console.log(element);
+        if(!element.value){
+            console.log('No hay valor');
+        }else{
+            console.log('Si encontro valor');
+            //this.console(e.tarjet.value);
+        }
+        return false;
+    }
+}
