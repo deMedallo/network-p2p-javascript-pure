@@ -272,12 +272,12 @@ var Principal = new Vue({
 						
                         
 						<li class="nav-item"><a class="nav-link" if="nodoCreate == true">{{ statusAPI }}</a></li>
-						<li class="nav-item" v-if="connect == 0"><a class="nav-link"><div class="led-gray"></div></a></li>
-						<li class="nav-item" v-if="connect == 1"><a class="nav-link"><div class="led-green"></div></a></li>
-						<li class="nav-item" v-if="connect == 2"><a class="nav-link"><div class="led-orange"></div></a></li>
                         
 						<li class="nav-item"><a class="nav-link"><i class="fa fa-user"></i> {{ MePeerId }}</a></li>
                         
+						<li class="nav-item" v-if="connect == 0"><a class="nav-link"><div class="led-gray"></div></a></li>
+						<li class="nav-item" v-if="connect == 1"><a class="nav-link"><div class="led-green"></div></a></li>
+						<li class="nav-item" v-if="connect == 2"><a class="nav-link"><div class="led-orange"></div></a></li>
                         <li class="nav-item dropdown">
 							<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <i class="fa fa-ellipsis-v"></i>
@@ -366,6 +366,49 @@ var Principal = new Vue({
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-sm-12">
+                        <h3>Comandos para la consola</h3>
+                        <table class="table">
+                            <tr>
+                                <th>Comando</th>
+                                <th>Atributos</th>
+                                <th>Modo de uso</th>
+                            </tr>
+                            <tr>
+                                <th>ping</th>
+                                <td>Enviar ping a un nodo.</td>
+                                <td>
+                                    <ul>
+                                        <li><b>nodeId</b>: Id del nodo de destino.</li>
+                                    </ul>
+                                </td>
+                                <td>ping {nodeId}</td>
+                            </tr>
+                            <tr>
+                                <th>sendMessage</th>
+                                <td>Enviar texto o mensaje a un nodo.</td>
+                                <td>
+                                    <ul>
+                                        <li><b>nodeId</b>: Id del nodo de destino.</li>
+                                        <li><b>text</b>: Texto a enviar.</li>
+                                    </ul>
+                                </td>
+                                <td>sendMessage {nodeId} {text}</td>
+                            </tr>
+                            <tr>
+                                <th>listPeer</th>
+                                <td>
+                                    Obtener listado de los nodos conectados (Se muestra en json si esta habilitado).
+                                </td>                                    
+                                <td>
+                                    <ul>
+                                        <li><b>infoComplete</b>: Informacion completa true/false</li>
+                                    </ul>
+                                </td>
+                                <td>listPeer {infoComplete}</td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             </div>

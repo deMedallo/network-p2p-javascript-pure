@@ -27,18 +27,70 @@ API.logs = [];
 API.myRecibeMessage = [];
 API.myMessages = {};
 API._nodesShar = {};
+
 API.commands = {
     ping: {
         fields: {
-            'to': {
+            'nodeId': {
                 type: 'string',
                 position: 0,
-                help: 'Nodo de destino para ping',
+                help: 'Nodo de destino para ping.',
             }
         },
-        result: 'sendPing:to'
+        result: 'sendPing:nodeId'
+    },
+    sendMessage: {
+        fields: {
+            'nodeId': {
+                type: 'string',
+                position: 0,
+                help: 'Nodo de destino.',
+            },
+            'text': {
+                type: 'string',
+                position: 1,
+                help: 'Texto de destino.',
+            }
+        },
+        result: 'sendMessageConsole:nodeId,text'
+    },
+    listPeer: {
+        fields: {
+            'infoComplete': {
+                type: 'boolean',
+                position: 0,
+                help: 'Mostrar completo (True) / Solo nombres (False)',
+            }
+        },
+        result: 'nodesEnablesConsole:infoComplete'
     }
 };
+
+API.nodesEnablesConsole = function(json=false){
+    var textResult = '';
+    
+    if(json == false){
+        var finalArray = [];
+        var target2 = API.Nodes;
+        for (var k in target2){
+            if (typeof target2[k] !== 'function') {
+                var idPeer = target2[k].peerId;
+                finalArray.push(idPeer);
+            }
+        }
+        textResult = 'Listado de nodos: ' + finalArray.join(',');
+    }else{
+        textResult = JSON.stringify(API.Nodes);
+    }
+    
+    API.addMessage({
+        type: 'info',
+        from: 'System',
+        to: 'My',
+        text: textResult
+    });
+    return false;
+}
 
 API.addPeer = function(peerId){
     instance.post('/peer', {
@@ -72,6 +124,13 @@ API.SendShared = function(msg){
             }
         }
     }
+}
+
+API.sendMessageConsole = function(toInput,textInput){
+    API.sendMessage({
+        to: toInput,
+        text: textInput
+    });
 }
 
 API.sendMessage = function(msg){
@@ -580,6 +639,7 @@ API.console = function(lineCode){
         
         if(!API.commands[command]){
             API.addMessage({
+                type: 'danger',
                 from: 'System',
                 to: 'My',
                 text: 'El comando no existe.'
@@ -592,7 +652,14 @@ API.console = function(lineCode){
                     var item = target[k].position + 1;
                     if(!porciones[item]){
                         console.log('Falta valor');
-                        console.log(item);
+                        console.log(k);
+                        
+                        API.addMessage({
+                            type: 'danger',
+                            from: 'System',
+                            to: 'My',
+                            text: 'Falta valor ' + k + '. Ayuda: ' + target[k].help
+                        });
                     }else{
                         valuesComm[k] = porciones[item];
                     }
@@ -821,7 +888,7 @@ API.detectCodeConsole = function(e, element){
             console.log('No hay valor');
         }else{
             console.log('Si encontro valor');
-            //this.console(e.tarjet.value);
+            this.console(element.value);
         }
         return false;
     }
